@@ -4,7 +4,7 @@ const filterWrapper = document.querySelector(".sr_cata");
 const typeFilterWrapper = document.querySelector(".type_cata");
 const departureReadyWrapper = document.querySelector(".dr_check");
 const highTimeCrewWrapper = document.querySelector(".htc_check");
-const sellersFilterWrapper = document.querySelector(".sellers_cata");
+const sellersFilterWrapper = document.querySelector(".sellers_cata"); // New filter wrapper for operator_txt_text
 const searchInput = document.querySelector(".sr_input");
 const wrapper = document.querySelector(".searchbody_wrapper");
 const paginationWrapper = document.querySelector(".pagination");
@@ -70,15 +70,12 @@ fetch("https://jettly.com/api/1.1/wf/webflow_one_way_flight", {
     let currentPage = 1;
     let selectedClassFilters = [];
     let selectedTypeFilters = [];
-    let selectedSellersFilters = [];
+    let selectedSellersFilters = []; // Added for seller filter
     let searchText = "";
-    let filteredItems = [...aircraftSets]; // Initial list of all items
+    let filteredItems = [...aircraftSets];
     let departureReadyFilter = false;
     let highTimeCrewFilter = false;
     let selectedYearRange = minYear;
-
-    // Store all items for range filtering
-    let rangeFilteredItems = [...aircraftSets];
 
     const totalPages = () => Math.ceil(filteredItems.length / itemsPerPage);
 
@@ -122,55 +119,39 @@ fetch("https://jettly.com/api/1.1/wf/webflow_one_way_flight", {
     };
 
     const applyFilters = () => {
-      let tempFilteredItems = rangeFilteredItems; // Start from range filtered items
-
-      // Apply text search filter
-      if (searchText) {
-        tempFilteredItems = tempFilteredItems.filter((item) =>
-          item.description_text.toLowerCase().includes(searchText)
+      filteredItems = aircraftSets.filter((item) => {
+        const matchesSearch = item.description_text
+          .toLowerCase()
+          .includes(searchText);
+        const matchesClassFilter =
+          selectedClassFilters.length === 0 ||
+          selectedClassFilters.includes(item.class_text);
+        const matchesTypeFilter =
+          selectedTypeFilters.length === 0 ||
+          selectedTypeFilters.includes(item.description_text);
+        const matchesDepartureReady =
+          !departureReadyFilter || item.departure_ready__boolean === true;
+        const matchesHighTimeCrew =
+          !highTimeCrewFilter || item.high_time_crew__boolean === true;
+        const matchesSellersFilter =
+          selectedSellersFilters.length === 0 ||
+          selectedSellersFilters.includes(item.operator_txt_text);
+        const matchesYearRange =
+          item.year_of_manufacture_number >= selectedYearRange;
+        return (
+          matchesSearch &&
+          matchesClassFilter &&
+          matchesTypeFilter &&
+          matchesDepartureReady &&
+          matchesHighTimeCrew &&
+          matchesSellersFilter &&
+          matchesYearRange
         );
-      }
-
-      // Apply class filter
-      if (selectedClassFilters.length > 0) {
-        tempFilteredItems = tempFilteredItems.filter((item) =>
-          selectedClassFilters.includes(item.class_text)
-        );
-      }
-
-      // Apply type filter
-      if (selectedTypeFilters.length > 0) {
-        tempFilteredItems = tempFilteredItems.filter((item) =>
-          selectedTypeFilters.includes(item.description_text)
-        );
-      }
-
-      // Apply Departure Ready filter
-      if (departureReadyFilter) {
-        tempFilteredItems = tempFilteredItems.filter(
-          (item) => item.departure_ready__boolean === true
-        );
-      }
-
-      // Apply High Time Crew filter
-      if (highTimeCrewFilter) {
-        tempFilteredItems = tempFilteredItems.filter(
-          (item) => item.high_time_crew__boolean === true
-        );
-      }
-
-      // Apply Sellers filter
-      if (selectedSellersFilters.length > 0) {
-        tempFilteredItems = tempFilteredItems.filter((item) =>
-          selectedSellersFilters.includes(item.operator_txt_text)
-        );
-      }
-
-      filteredItems = tempFilteredItems; // Update the filtered items
+      });
       updateSearchAmount();
-      currentPage = 1; // Reset to the first page
-      renderPage(currentPage); // Render the new page
-      renderFilters(); // Update the filter labels with new counts
+      currentPage = 1;
+      renderPage(currentPage);
+      updateCheckboxes();
     };
 
     const renderFilters = () => {
@@ -244,7 +225,55 @@ fetch("https://jettly.com/api/1.1/wf/webflow_one_way_flight", {
         typeFilterWrapper.appendChild(div);
       });
 
-      // Sellers Filters (Operators)
+      // Departure Ready Filter
+      const departureReadyCount = filteredItems.filter(
+        (item) => item.departure_ready__boolean === true
+      ).length;
+
+      departureReadyWrapper.innerHTML = "";
+      const departureReadyCheckbox = document.createElement("input");
+      departureReadyCheckbox.type = "checkbox";
+      departureReadyCheckbox.id = "departureReady";
+      departureReadyCheckbox.addEventListener("change", () => {
+        departureReadyFilter = departureReadyCheckbox.checked;
+        applyFilters();
+      });
+
+      const departureReadyLabel = document.createElement("label");
+      departureReadyLabel.htmlFor = "departureReady";
+      departureReadyLabel.textContent = `Departure Ready (${departureReadyCount})`;
+
+      const departureReadyDiv = document.createElement("div");
+      departureReadyDiv.classList.add("checkboxWrapper");
+      departureReadyDiv.appendChild(departureReadyCheckbox);
+      departureReadyDiv.appendChild(departureReadyLabel);
+      departureReadyWrapper.appendChild(departureReadyDiv);
+
+      // High Time Crew Filter
+      const highTimeCrewCount = filteredItems.filter(
+        (item) => item.high_time_crew__boolean === true
+      ).length;
+
+      highTimeCrewWrapper.innerHTML = "";
+      const highTimeCrewCheckbox = document.createElement("input");
+      highTimeCrewCheckbox.type = "checkbox";
+      highTimeCrewCheckbox.id = "highTimeCrew";
+      highTimeCrewCheckbox.addEventListener("change", () => {
+        highTimeCrewFilter = highTimeCrewCheckbox.checked;
+        applyFilters();
+      });
+
+      const highTimeCrewLabel = document.createElement("label");
+      highTimeCrewLabel.htmlFor = "highTimeCrew";
+      highTimeCrewLabel.textContent = `High Time Crew (${highTimeCrewCount})`;
+
+      const highTimeCrewDiv = document.createElement("div");
+      highTimeCrewDiv.classList.add("checkboxWrapper");
+      highTimeCrewDiv.appendChild(highTimeCrewCheckbox);
+      highTimeCrewDiv.appendChild(highTimeCrewLabel);
+      highTimeCrewWrapper.appendChild(highTimeCrewDiv);
+
+      // Sellers Filter (Operator Text)
       const sellersCounts = filteredItems.reduce((acc, item) => {
         acc[item.operator_txt_text] = (acc[item.operator_txt_text] || 0) + 1;
         return acc;
@@ -280,30 +309,23 @@ fetch("https://jettly.com/api/1.1/wf/webflow_one_way_flight", {
       });
     };
 
-    // Initial render of filters and items
-    renderFilters();
-    applyFilters();
-
-    // Search Input
-    searchInput.addEventListener("input", (e) => {
-      searchText = e.target.value.toLowerCase();
+    searchInput.addEventListener("input", () => {
+      searchText = searchInput.value.toLowerCase();
       applyFilters();
     });
 
-    // Range Slider Change
     slider.addEventListener("input", () => {
       selectedYearRange = parseInt(slider.value);
       rangeValueElement.textContent = slider.value;
-
-      // Filter items based on selected range
-      rangeFilteredItems = aircraftSets.filter((item) => {
-        return item.year_of_manufacture_number >= selectedYearRange;
-      });
-
-      applyFilters(); // Update filtered items when slider value changes
+      applyFilters();
     });
+
+    renderFilters();
+    applyFilters();
   })
   .catch((error) => {
-    console.error("Error fetching data:", error);
     hideLoader();
+    console.error(error);
   });
+
+// bsed <code></code>
