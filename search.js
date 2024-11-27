@@ -2,9 +2,7 @@ const loader = document.querySelector(".loader");
 const searchAmount = document.querySelector(".search_amount");
 const filterWrapper = document.querySelector(".sr_cata");
 const typeFilterWrapper = document.querySelector(".type_cata");
-const departureReadyWrapper = document.querySelector(".dr_check");
-const highTimeCrewWrapper = document.querySelector(".htc_check");
-const sellersFilterWrapper = document.querySelector(".sellers_cata"); // New filter wrapper for operator_txt_text
+const drWrapper = document.querySelector(".dr_wrapper"); // For Departure Ready and High Time Crew checkboxes
 const searchInput = document.querySelector(".sr_input");
 const wrapper = document.querySelector(".searchbody_wrapper");
 const paginationWrapper = document.querySelector(".pagination");
@@ -70,11 +68,10 @@ fetch("https://jettly.com/api/1.1/wf/webflow_one_way_flight", {
     let currentPage = 1;
     let selectedClassFilters = [];
     let selectedTypeFilters = [];
-    let selectedSellersFilters = []; // Added for seller filter
+    let selectedDrFilters = []; // For departure ready filter
+    let selectedHtcFilters = []; // For high time crew filter
     let searchText = "";
     let filteredItems = [...aircraftSets];
-    let departureReadyFilter = false;
-    let highTimeCrewFilter = false;
     let selectedYearRange = minYear;
 
     const totalPages = () => Math.ceil(filteredItems.length / itemsPerPage);
@@ -130,12 +127,11 @@ fetch("https://jettly.com/api/1.1/wf/webflow_one_way_flight", {
           selectedTypeFilters.length === 0 ||
           selectedTypeFilters.includes(item.description_text);
         const matchesDepartureReady =
-          !departureReadyFilter || item.departure_ready__boolean === true;
+          selectedDrFilters.length === 0 ||
+          selectedDrFilters.includes(item.departure_ready__boolean);
         const matchesHighTimeCrew =
-          !highTimeCrewFilter || item.high_time_crew__boolean === true;
-        const matchesSellersFilter =
-          selectedSellersFilters.length === 0 ||
-          selectedSellersFilters.includes(item.operator_txt_text);
+          selectedHtcFilters.length === 0 ||
+          selectedHtcFilters.includes(item.high_time_crew__boolean);
         const matchesYearRange =
           item.year_of_manufacture_number >= selectedYearRange;
         return (
@@ -144,14 +140,13 @@ fetch("https://jettly.com/api/1.1/wf/webflow_one_way_flight", {
           matchesTypeFilter &&
           matchesDepartureReady &&
           matchesHighTimeCrew &&
-          matchesSellersFilter &&
           matchesYearRange
         );
       });
       updateSearchAmount();
       currentPage = 1;
       renderPage(currentPage);
-      updateCheckboxes();
+      // updateCheckboxes();
     };
 
     const renderFilters = () => {
@@ -224,78 +219,36 @@ fetch("https://jettly.com/api/1.1/wf/webflow_one_way_flight", {
         div.appendChild(label);
         typeFilterWrapper.appendChild(div);
       });
+    };
 
-      // Departure Ready Filter
-      const departureReadyCount = filteredItems.filter(
-        (item) => item.departure_ready__boolean === true
-      ).length;
-
-      departureReadyWrapper.innerHTML = "";
-      const departureReadyCheckbox = document.createElement("input");
-      departureReadyCheckbox.type = "checkbox";
-      departureReadyCheckbox.id = "departureReady";
-      departureReadyCheckbox.addEventListener("change", () => {
-        departureReadyFilter = departureReadyCheckbox.checked;
-        applyFilters();
-      });
-
-      const departureReadyLabel = document.createElement("label");
-      departureReadyLabel.htmlFor = "departureReady";
-      departureReadyLabel.textContent = `Departure Ready (${departureReadyCount})`;
-
-      const departureReadyDiv = document.createElement("div");
-      departureReadyDiv.classList.add("checkboxWrapper");
-      departureReadyDiv.appendChild(departureReadyCheckbox);
-      departureReadyDiv.appendChild(departureReadyLabel);
-      departureReadyWrapper.appendChild(departureReadyDiv);
-
-      // High Time Crew Filter
-      const highTimeCrewCount = filteredItems.filter(
-        (item) => item.high_time_crew__boolean === true
-      ).length;
-
-      highTimeCrewWrapper.innerHTML = "";
-      const highTimeCrewCheckbox = document.createElement("input");
-      highTimeCrewCheckbox.type = "checkbox";
-      highTimeCrewCheckbox.id = "highTimeCrew";
-      highTimeCrewCheckbox.addEventListener("change", () => {
-        highTimeCrewFilter = highTimeCrewCheckbox.checked;
-        applyFilters();
-      });
-
-      const highTimeCrewLabel = document.createElement("label");
-      highTimeCrewLabel.htmlFor = "highTimeCrew";
-      highTimeCrewLabel.textContent = `High Time Crew (${highTimeCrewCount})`;
-
-      const highTimeCrewDiv = document.createElement("div");
-      highTimeCrewDiv.classList.add("checkboxWrapper");
-      highTimeCrewDiv.appendChild(highTimeCrewCheckbox);
-      highTimeCrewDiv.appendChild(highTimeCrewLabel);
-      highTimeCrewWrapper.appendChild(highTimeCrewDiv);
-
-      // Sellers Filter (Operator Text)
-      const sellersCounts = filteredItems.reduce((acc, item) => {
-        acc[item.operator_txt_text] = (acc[item.operator_txt_text] || 0) + 1;
+    const renderDrFilters = () => {
+      // Departure Ready Filter (departure_ready__boolean) only for true
+      const departureReadyCounts = filteredItems.reduce((acc, item) => {
+        if (item.departure_ready__boolean === true) {
+          acc.true = (acc.true || 0) + 1;
+        }
         return acc;
       }, {});
 
-      sellersFilterWrapper.innerHTML = "";
-      Object.entries(sellersCounts).forEach(([operatorText, count]) => {
+      drWrapper.innerHTML = ""; // Clear previous filters
+
+      // Departure Ready Checkbox (only true)
+      if (departureReadyCounts.true > 0) {
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
-        checkbox.value = operatorText;
-        checkbox.id = `filter-seller-${operatorText}`;
+        checkbox.value = true;
+        checkbox.id = `filter-departure-ready-true`;
 
         const label = document.createElement("label");
-        label.htmlFor = `filter-seller-${operatorText}`;
-        label.textContent = `${operatorText} (${count})`;
+        label.htmlFor = `filter-departure-ready-true`;
+        label.textContent = `Departure Ready (${departureReadyCounts.true})`;
 
         checkbox.addEventListener("change", () => {
           if (checkbox.checked) {
-            selectedSellersFilters.push(operatorText);
+            selectedDrFilters.push(true);
           } else {
-            selectedSellersFilters = selectedSellersFilters.filter(
-              (filter) => filter !== operatorText
+            selectedDrFilters = selectedDrFilters.filter(
+              (filter) => filter !== true
             );
           }
           applyFilters();
@@ -305,27 +258,94 @@ fetch("https://jettly.com/api/1.1/wf/webflow_one_way_flight", {
         div.classList.add("checkboxWrapper");
         div.appendChild(checkbox);
         div.appendChild(label);
-        sellersFilterWrapper.appendChild(div);
-      });
+        drWrapper.appendChild(div);
+      }
+
+      // High Time Crew Filter (high_time_crew__boolean) only for true
+      const highTimeCrewCounts = filteredItems.reduce((acc, item) => {
+        if (item.high_time_crew__boolean === true) {
+          acc.true = (acc.true || 0) + 1;
+        }
+        return acc;
+      }, {});
+
+      // High Time Crew Checkbox (only true)
+      if (highTimeCrewCounts.true > 0) {
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = true;
+        checkbox.id = `filter-high-time-crew-true`;
+
+        const label = document.createElement("label");
+        label.htmlFor = `filter-high-time-crew-true`;
+        label.textContent = `High Time Crew (${highTimeCrewCounts.true})`;
+
+        checkbox.addEventListener("change", () => {
+          if (checkbox.checked) {
+            selectedHtcFilters.push(true);
+          } else {
+            selectedHtcFilters = selectedHtcFilters.filter(
+              (filter) => filter !== true
+            );
+          }
+          applyFilters();
+        });
+
+        const div = document.createElement("div");
+        div.classList.add("checkboxWrapper");
+        div.appendChild(checkbox);
+        div.appendChild(label);
+        drWrapper.appendChild(div);
+      }
     };
 
+    slider.addEventListener("input", () => {
+      selectedYearRange = parseInt(slider.value);
+      rangeValueElement.textContent = selectedYearRange;
+      applyFilters();
+
+      // After applying filters, log the updated checkbox counts
+      const classCounts = filteredItems.reduce((acc, item) => {
+        acc[item.class_text] = (acc[item.class_text] || 0) + 1;
+        return acc;
+      }, {});
+      console.log("Class Filter Counts:", classCounts);
+
+      const typeCounts = filteredItems.reduce((acc, item) => {
+        acc[item.description_text] = (acc[item.description_text] || 0) + 1;
+        return acc;
+      }, {});
+      console.log("Type Filter Counts:", typeCounts);
+
+      const departureReadyCounts = filteredItems.reduce((acc, item) => {
+        if (item.departure_ready__boolean === true) {
+          acc.true = (acc.true || 0) + 1;
+        }
+        return acc;
+      }, {});
+      console.log("Departure Ready Filter Counts:", departureReadyCounts);
+
+      const highTimeCrewCounts = filteredItems.reduce((acc, item) => {
+        if (item.high_time_crew__boolean === true) {
+          acc.true = (acc.true || 0) + 1;
+        }
+        return acc;
+      }, {});
+      console.log("High Time Crew Filter Counts:", highTimeCrewCounts);
+    });
+
+    // Event listener for search input
     searchInput.addEventListener("input", () => {
       searchText = searchInput.value.toLowerCase();
       applyFilters();
     });
 
-    slider.addEventListener("input", () => {
-      selectedYearRange = parseInt(slider.value);
-      rangeValueElement.textContent = slider.value;
-      applyFilters();
-    });
-
+    // Initial rendering
     renderFilters();
+    renderDrFilters();
     applyFilters();
   })
   .catch((error) => {
+    console.error("Error fetching data:", error);
     hideLoader();
-    console.error(error);
   });
-
-// bsed <code></code>
